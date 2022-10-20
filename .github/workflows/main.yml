@@ -1,0 +1,91 @@
+name: TerraformCICD
+
+on:
+  workflow_dispatch:
+    inputs:
+      ENVRIONMENT:
+        type: choice
+        description: 'EnvironmentName'
+        required: true
+        options: 
+        - test
+        - prod
+        - dev
+      STATEBUCKET:
+        type: choice
+        description: 'BucketName'
+        required: true
+        options: 
+        - tf-state-bucket1
+      STATEKEY:
+        type: choice
+        description: 'StateKey'
+        required: true
+        options: 
+        - s3-bucket
+        - s3-bucket2
+        - s3-bucket3
+      TERRAFORMCOMMAND:
+        type: choice
+        description: 'Terraform Command'
+        required: true
+        options:
+        - first-run
+        - init
+        - plan
+        - apply
+        - destroy-init
+        - test
+      STATEREGION:
+        description: 'Region of bucket'
+        required: true
+        default: 'ap-south-1'
+env:
+  STATEBUCKETNAME: ${{ github.event.inputs.STATEBUCKET }}
+  STATEKEYNAME: ${{ github.event.inputs.STATEKEY }}
+  ENVRIONMENTNAME: ${{ github.event.inputs.ENVRIONMENT }}
+  STATEREGIONNAME: ${{ github.event.inputs.STATEREGION }}
+
+jobs:
+  terraform-cicd:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Terraform Setup
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.3.0
+      - uses: actions/checkout@v3
+      - name: Configure AWS Creds
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+      - name: Terraform Version Check
+        run: terraform --version
+      - name: Terraform Init
+        if: ${{ github.event.inputs.TERRAFORMCOMMAND == 'init' }}
+        run: | 
+          make init
+      - name: Terraform Plan
+        if: ${{ github.event.inputs.TERRAFORMCOMMAND == 'plan' }}
+        run: | 
+          make plan
+      - name: Terraform first-run
+        if: ${{ github.event.inputs.TERRAFORMCOMMAND == 'first-run' }}
+        run: | 
+          make first-run
+      - name: Terraform apply
+        if: ${{ github.event.inputs.TERRAFORMCOMMAND == 'apply' }}
+        run: | 
+          make apply
+      - name: Terraform destroy
+        if: ${{ github.event.inputs.TERRAFORMCOMMAND == 'destroy' }}
+        run: | 
+          make destroy
+      # - name: Terraform Plan
+      #   run: terraform plan
+      #   w
+      # - name: Terraform Apply
+      #   run: terraform apply -auto-approve
+      #   w
